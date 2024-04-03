@@ -6,7 +6,9 @@ import torch.nn.functional as F
 class cls_model(nn.Module):
     def __init__(self, num_classes=3):
         super(cls_model, self).__init__()
-        pass
+        N = None # TODO
+        self.tnet1 = nn.Linear(3, 3)
+        self.mlp1 = None # TODO
 
     def forward(self, points):
         '''
