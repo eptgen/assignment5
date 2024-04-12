@@ -20,7 +20,8 @@ def train(train_dataloader, model, opt, epoch, args, writer):
         labels = labels.to(args.device).to(torch.long)
 
         # ------ TO DO: Forward Pass ------
-        predictions = 
+        # print("point_clouds shape", point_clouds.shape)
+        predictions = model(point_clouds)
 
         if (args.task == "seg"):
             labels = labels.reshape([-1])
@@ -55,7 +56,8 @@ def test(test_dataloader, model, epoch, args, writer):
 
             # ------ TO DO: Make Predictions ------
             with torch.no_grad():
-                pred_labels = 
+                _, pred_labels = model(point_clouds).max(dim = 1)
+                # print("predicting", pred_labels[0])
             correct_obj += pred_labels.eq(labels.data).cpu().sum().item()
             num_obj += labels.size()[0]
 
@@ -74,8 +76,9 @@ def test(test_dataloader, model, epoch, args, writer):
 
             # ------ TO DO: Make Predictions ------
             with torch.no_grad():     
-                pred_labels = 
+                _, pred_labels = model(point_clouds).max(dim = 2)
 
+            # print(pred_labels.shape, labels.shape)
             correct_point += pred_labels.eq(labels.data).cpu().sum().item()
             num_point += labels.view([-1,1]).size()[0]
 
@@ -96,13 +99,15 @@ def main(args):
 
     # Tensorboard Logger
     writer = SummaryWriter('./logs/{0}'.format(args.task+"_"+args.exp_name))
+    # print("hi")
 
     # ------ TO DO: Initialize Model ------
     if args.task == "cls":
-        model = 
+        model = cls_model()
     else:
-        model = 
+        model = seg_model(args.num_seg_class)
     
+    print(model)
     # Load Checkpoint 
     if args.load_checkpoint:
         model_path = "{}/{}.pt".format(args.checkpoint_dir,args.load_checkpoint)
@@ -180,7 +185,7 @@ def create_parser():
 if __name__ == '__main__':
     parser = create_parser()
     args = parser.parse_args()
-    args.device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
+    args.device = torch.device("cuda")
     args.checkpoint_dir = args.checkpoint_dir+"/"+args.task # checkpoint directory is task specific
 
     main(args)

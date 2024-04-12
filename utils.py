@@ -1,3 +1,4 @@
+import numpy as np
 import os
 import torch
 import pytorch3d
@@ -68,7 +69,7 @@ def viz_seg (verts, labels, path, device):
     R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist, elev=elev, azim=azim, device=device)
     c = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, fov=60, device=device)
 
-    sample_verts = verts.unsqueeze(0).repeat(30,1,1).to(torch.float)
+    sample_verts = verts.unsqueeze(0).repeat(30,1,1).to(torch.float).to(device)
     sample_labels = labels.unsqueeze(0)
     sample_colors = torch.zeros((1,10000,3))
 
@@ -76,7 +77,7 @@ def viz_seg (verts, labels, path, device):
     for i in range(6):
         sample_colors[sample_labels==i] = torch.tensor(colors[i])
 
-    sample_colors = sample_colors.repeat(30,1,1).to(torch.float)
+    sample_colors = sample_colors.repeat(30,1,1).to(torch.float).to(device)
 
     point_cloud = pytorch3d.structures.Pointclouds(points=sample_verts, features=sample_colors).to(device)
 
@@ -84,5 +85,5 @@ def viz_seg (verts, labels, path, device):
     rend = renderer(point_cloud, cameras=c).cpu().numpy() # (30, 256, 256, 3)
     rend = (rend * 255).astype(np.uint8)
 
-    imageio.mimsave(path, rend, fps=15)
+    imageio.mimsave(path, rend, fps=15, loop = 0)
 

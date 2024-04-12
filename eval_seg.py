@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
 
+import pytorch3d
 import torch
 from models import seg_model
 from data_loader import get_data_loader
@@ -36,7 +37,7 @@ if __name__ == '__main__':
     create_dir(args.output_dir)
 
     # ------ TO DO: Initialize Model for Segmentation Task  ------
-    model = 
+    model = seg_model(num_seg_classes = args.num_seg_class)
     
     # Load Model Checkpoint
     model_path = './checkpoints/seg/{}.pt'.format(args.load_checkpoint)
@@ -46,18 +47,38 @@ if __name__ == '__main__':
     model.eval()
     print ("successfully loaded checkpoint from {}".format(model_path))
 
-
     # Sample Points per Object
-    ind = np.random.choice(10000,args.num_points, replace=False)
-    test_data = torch.from_numpy((np.load(args.test_data))[:,ind,:])
-    test_label = torch.from_numpy((np.load(args.test_label))[:,ind])
+    N = 10000
+    replace = True
+    # UNCOMMENT BELOW TWO LINES FOR NPOINTS TEST
+    # N = 10
+    # replace = True
+    ind = np.random.choice(N,args.num_points, replace=replace)
+    num_obj, _, _ = torch.from_numpy((np.load(args.test_data))[:,ind,:]).to(args.device).shape
+    # print("num_obj", num_obj)
+    batch_size = 16
+    test_data = torch.zeros(num_obj, args.num_points, 3).to(args.device)
+    test_label = torch.from_numpy((np.load(args.test_label))[:,ind]).to(args.device)
+    pred_label = torch.zeros(num_obj, args.num_points).to(args.device)
+    # UNCOMMENT FOR ROTATION TEST
+    # rot = pytorch3d.transforms.euler_angles_to_matrix(torch.asarray([45, 0, 45]), "XYZ").to(args.device)
+    
+    for batch in range(0, num_obj, batch_size):
+        test_data[batch:batch+batch_size] = torch.from_numpy((np.load(args.test_data))[batch:batch+batch_size,ind,:]).to(args.device)
+        # UNCOMMENT FOR ROTATION TEST
+        # test_data = test_data @ rot
 
-    # ------ TO DO: Make Prediction ------
-    pred_label = 
+        # ------ TO DO: Make Prediction ------
+        _, pred_label[batch:batch+batch_size] = model(test_data[batch:batch+batch_size]).max(dim = 2)
 
     test_accuracy = pred_label.eq(test_label.data).cpu().sum().item() / (test_label.reshape((-1,1)).size()[0])
     print ("test accuracy: {}".format(test_accuracy))
+    ith_accuracy = pred_label[args.i].eq(test_label[args.i].data).cpu().sum().item() / (test_label[args.i].reshape((-1,1)).size()[0])
+    print(f"accuracy of {args.i}th object: {ith_accuracy}")
 
+    test_data = test_data.to(args.device)
+    test_label = test_label.to(args.device)
+    pred_label = pred_label.to(args.device)
     # Visualize Segmentation Result (Pred VS Ground Truth)
-    viz_seg(test_data[args.i], test_label[args.i], "{}/gt_{}.gif".format(args.output_dir, args.exp_name), args.device)
-    viz_seg(test_data[args.i], pred_label[args.i], "{}/pred_{}.gif".format(args.output_dir, args.exp_name), args.device)
+    viz_seg(test_data[args.i], test_label[args.i], "{}/seg_gt_{}.gif".format(args.output_dir, args.i), args.device)
+    viz_seg(test_data[args.i], pred_label[args.i], "{}/seg_pred_{}.gif".format(args.output_dir, args.i), args.device)
